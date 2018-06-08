@@ -61,10 +61,10 @@ impl<T: Ipc> Remy<T> {
     // note: Ack.ecn_bytes holds the rs->delivered * MTU * S_TO_US
     // the fastRecEwma and the slowRecEwma is scaled by 1000x
     fn install_fold(&self) -> Scope {
-        let program = 
+        self.control_channel.install(
             b"
-                def (
-                    Report (
+                (def
+                    (Report
                         (minrtt +infinity)
                         (sendEwma 0)
                         (fastRecvEwma 0)
@@ -78,20 +78,17 @@ impl<T: Ipc> Remy<T> {
                 (when true
                     (:= delivered Ack.ecn_bytes)
                     (:= Report.minrtt (min Report.minrtt Flow.rtt_sample_us))
-                    (:= rttRatio (/ (* 100 Flow.rtt_sample_us) Report.minrtt))
+                    (:= Report.rttRatio (/ (* 1000 Flow.rtt_sample_us) Report.minrtt))
                     (:= interSend (/ (* delivered 1000) Flow.rate_incoming))
-                    (:= interReceive (/ (* delivered 1000) Flow.outgoing))
-                    (:= fastRecvEwma (/ (+ (* 7 Report.fastRecvEwma) (* 1 interReceive)) 8)
-                    (:= slowRecvEwma (/ (+ (* 255 Report.fastRecvEwma) (* 1 interReceive)) 256)
-                    (:= sendEwma (/ (* 7 Report.sendEwma) (* 1 interSend) 8)
+                    (:= interReceive (/ (* delivered 1000) Flow.rate_outgoing))
+                    (:= Report.fastRecvEwma (/ (+ (* 7 Report.fastRecvEwma) (* 1 interReceive)) 8))
+                    (:= Report.slowRecvEwma (/ (+ (* 255 Report.fastRecvEwma) (* 1 interReceive)) 256))
+                    (:= Report.sendEwma (/ (+ (* 7 Report.sendEwma) (* 1 interSend)) 8))
                 )
                 (when (> Micros Report.minrtt)
                     (:= Micros 0)
                     (report)
-                )
-
-            ";
-        self.control_channel.install(program, None).unwrap()
+                )", None).unwrap()
     }
 
     fn get_fields(&mut self, m: &Report) -> RemyMeasurements {
