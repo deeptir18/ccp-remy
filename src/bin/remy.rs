@@ -24,12 +24,21 @@ fn make_args() -> Result<(ccp_remy::RemyConfig, String), String> {
              .long("input_whiskers")
              .help("Protobuf file with remy whiskers located.")
              .default_value("/home/ubuntu/remy/tests/RemyCC-2014-100x.dna"))
+        .arg(Arg::with_name("training_linkrate")
+             .long("training_linkrate")
+             .help("Link rate used during training.")
+             .default_value("32"))
+        .arg(Arg::with_name("linkrate")
+             .long("linkrate")
+             .help("Linkrate being run on")
+             .default_value("32"))
         .get_matches();
-
-
+    
     Ok((
         ccp_remy::RemyConfig {
             input_whiskers: String::from(matches.value_of("input_whiskers").unwrap()),
+            training_linkrate: u32::from_str_radix(&matches.value_of("training_linkrate").unwrap(), 10).unwrap(),
+            linkrate: u32::from_str_radix(&matches.value_of("linkrate").unwrap(), 10).unwrap(),
         },
         String::from(matches.value_of("ipc").unwrap()),
     ))
